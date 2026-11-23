@@ -2,7 +2,6 @@
 
 **Manage your [vrno.cc](https://vrno.cc) short links from Microsoft Copilot Studio.** Create, list, look up, and delete links in English or Spanish without leaving the conversation.
 
-[![Build base agent solution](https://github.com/pvernocchi/vrno-copilot-studio-agent/actions/workflows/build-agent-solution.yml/badge.svg)](https://github.com/pvernocchi/vrno-copilot-studio-agent/actions/workflows/build-agent-solution.yml)
 [![Copilot Studio](https://img.shields.io/badge/Microsoft-Copilot%20Studio-5B5FC7)](https://www.microsoft.com/microsoft-copilot/microsoft-copilot-studio)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue)](LICENSE)
 
