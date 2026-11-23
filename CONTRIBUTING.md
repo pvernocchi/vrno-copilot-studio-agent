@@ -1,78 +1,42 @@
-# Contributing
+# Contributing to vrno.cc Link Assistant
 
-Thanks for your interest in improving `precost-cowork-skill`.
+This repository contains a Microsoft Copilot Studio agent for managing vrno.cc short links, the custom connector definition, and Power Platform packaging scripts. It does not host the vrno.cc API. If you report a bug, say whether it occurs during packaging, solution import, connector setup, or a conversation with the agent. Include steps to reproduce it and the expected and actual behavior, with credentials and private link data removed.
 
-This repository contains a Microsoft Copilot Cowork skill package for `/precost`. Contributions are welcome for bug fixes, documentation improvements, and refinements to the cost/value estimation logic.
+## Where to make changes
 
-## How to contribute
+| Change | Files |
+| --- | --- |
+| Agent behavior in English and Spanish | [`agent/instructions.md`](agent/instructions.md), which the build embeds in the base agent |
+| Tool setup or connection guidance | [`agent/tool-setup.md`](agent/tool-setup.md) and the deployment steps in [`README.md`](README.md) |
+| API operations, inputs, or authentication | [`connector/vrno-cc/`](connector/vrno-cc/), which contains the Swagger 2.0 definition and connection metadata |
+| Packaging or validation | [`scripts/`](scripts/) and the [base-agent build workflow](.github/workflows/build-agent-solution.yml) |
 
-You can contribute by:
+Keep the connector definition, tool setup, and agent instructions aligned. `GetLink` looks up a short code, while `DeleteLink` takes the numeric ID from the API response. Deletion requires confirmation both in the conversation and in the Copilot Studio tool configuration. The agent should respond in the user's language and report success only after a tool confirms it.
 
-- Reporting bugs or unclear behavior
-- Suggesting improvements to the cost estimation logic
-- Updating the documentation and installation guidance
-- Improving the skill packaging or release quality
-- Proposing better examples and usage guidance
+## Validate your change
 
-Before opening a pull request, please check whether an issue already exists for the topic.
+**Connector changes:** From the repository root, run:
 
-## Project structure
+```sh
+node scripts/Validate-Connector.mjs
+```
 
-- `README.md` — overview, usage, and repository description
-- `INSTALL.md` — installation and troubleshooting guidance for uploading the skill
-- `precost/SKILL.md` — the Copilot skill instructions and workflow
-- `precost/references/` — pricing, routing, and card templates used by the skill
+This checks the connector definition and authentication metadata without a token or live API access.
 
-## Development workflow
+**Agent instructions or build changes:** On Windows with the [Power Platform CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction), run from the repository root:
 
-1. Fork the repository and clone your fork.
-2. Create a feature branch.
-3. Make the change in the relevant files.
-4. Validate the change by checking the affected behavior.
-5. Update documentation when behavior, installation steps, or usage instructions change.
-6. Open a pull request with a clear description of the problem and the fix.
+```powershell
+.\scripts\Build-AgentSolution.ps1 -Initialize
+```
 
-## Working on the skill
+This writes the unmanaged base solution to `artifacts/vrno_ccAgent.zip`. Initialization needs an empty workspace, so pass `-WorkspacePath` with a fresh path if the default `build/agent-workspace` already contains files. The build does not require sign-in. The GitHub Actions workflow checks that the ZIP unpacks with the expected agent and topic components; it does not test solution import or live connector calls.
 
-This project is a skill package rather than a traditional application. When making changes, keep in mind:
+**Tool behavior changes:** Follow the [deployment steps](README.md#deploy-to-power-platform) in a test Power Platform environment with Dataverse and Copilot Studio access. The base ZIP does not include the connector, tool bindings, a connection reference, or credentials. Create the connector and connection in that environment and attach the tools before testing. Use a token with `read` scope for `ListLinks` and `GetLink`, and `write` scope for `CreateLink` and `DeleteLink`. Enter the complete `Bearer <your-token>` value only in the secure Power Platform connection field, never in chat, commits, or pull requests.
 
-- `precost/SKILL.md` is the operational source of truth for the skill workflow.
-- Reference files under `precost/references/` should stay consistent with any logic changes.
-- Any user-facing changes should be reflected in `README.md` and `INSTALL.md` when relevant.
-- The ZIP/package form used for Cowork should still match the expected archive structure: `SKILL.md` at the archive root.
+Exercise the affected operation in **Test your agent**. For conversation changes, try equivalent prompts in English and Spanish. To test deletion, use a disposable link and verify that declining leaves it intact and that confirming deletes only the intended link.
 
-## Validation checklist
+## Open a pull request
 
-Before submitting a pull request, confirm the following:
+Check for an existing issue, then make your change on a branch from `main`. Keep the pull request focused and commit source files rather than generated ZIPs, build workspaces, or environment exports. Update the README or tool setup guide if the deployment process or user-facing behavior changes.
 
-- The skill still matches the expected Cowork archive structure.
-- The `precost` folder includes the required files and references.
-- Documentation still matches the current installation and usage flow.
-- The change does not introduce unsupported or misleading guidance.
-- Any pricing or cost logic changes are explained clearly in the PR description.
-
-For packaging validation, ensure the archive contains `SKILL.md` at the root and that the generated ZIP matches the expected installable skill layout.
-
-## Pull request expectations
-
-Please keep PRs focused and easy to review:
-
-- One topic or fix per pull request when possible
-- A clear title and summary
-- Mention any affected files or behavior
-- Include screenshots or examples when the change affects UI or user output
-- Call out any risks, assumptions, or follow-up work
-
-## Code and content standards
-
-- Use clear, plain language
-- Keep instructions brief and actionable
-- Do not add unsupported claims or unverified pricing information
-- Preserve the advisory nature of the skill; it should not present estimates as guaranteed billing
-- Keep examples and prompts aligned with the actual skill behavior
-
-## Questions
-
-If you are unsure whether a change fits the project, open a discussion or issue first. We are happy to help refine the idea before you begin.
-
-Thank you for helping improve the project.
+Describe what changed, why, and which checks you ran. If you did not have access to a Power Platform test environment, note which import or live behavior still needs verification.
