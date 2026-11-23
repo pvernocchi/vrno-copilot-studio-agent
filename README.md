@@ -30,7 +30,7 @@ The CI workflow downloads the official Power Platform CLI NuGet package using no
 
 ## Configure it in your environment
 
-1. In Power Apps, create a custom connector from `connector/vrno-cc/apiDefinition.swagger.json`. Configure API-key authentication in the `Authorization` header and use `connector/vrno-cc/apiProperties.json` for the secure field label/help text.
+1. In Power Apps, create a custom connector from `connector/vrno-cc/apiDefinition.swagger.json`. Configure API-key authentication in the `Authorization` header and name the secure connection field **Bearer token**; `apiProperties.json` records its intended label and help text for connector tooling.
 2. Create a connection with the complete value `Bearer <your-token>` in the secure field. Use a token with `read` scope for listing/lookups and `write` scope for creating/deleting links. Never paste the token into chat or commit it.
 3. Import the `vrno-cc-agent-base` ZIP as an unmanaged solution.
 4. In Copilot Studio, add the connector's `ListLinks`, `CreateLink`, `GetLink`, and `DeleteLink` operations as tools, bind the connection when prompted, and require confirmation for `DeleteLink`. See [`agent/tool-setup.md`](agent/tool-setup.md).

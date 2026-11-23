@@ -5,6 +5,7 @@ on:
     paths:
       - "agent/**"
       - "connector/**"
+      - "README.md"
       - "scripts/Build-AgentSolution.ps1"
       - ".github/workflows/build-agent-solution.yml"
   workflow_dispatch:
