@@ -1,0 +1,21 @@
+{
+  "properties": {
+    "capabilities": [],
+    "connectionParameters": {
+      "bearerToken": {
+        "type": "securestring",
+        "uiDefinition": {
+          "constraints": {
+            "clearText": false,
+            "required": "true",
+            "tabIndex": 1
+          },
+          "description": "Enter the complete Authorization header value, including the Bearer prefix.",
+          "displayName": "Bearer token",
+          "tooltip": "Include the word Bearer, a space, and your token."
+        }
+      }
+    },
+    "iconBrandColor": "#3157A4"
+  }
+}
