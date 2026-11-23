@@ -2,6 +2,7 @@
 param(
     [string]$WorkspacePath = 'build\agent-workspace',
     [string]$OutputDirectory = 'artifacts',
+    [string]$PacPath,
     [switch]$Initialize
 )
 
@@ -21,17 +22,21 @@ function Resolve-RepositoryPath {
 $workspace = Resolve-RepositoryPath $WorkspacePath
 $output = Resolve-RepositoryPath $OutputDirectory
 $instructionsPath = Join-Path $repositoryRoot 'agent\instructions.md'
-$pac = Get-Command 'pac' -ErrorAction SilentlyContinue
 
-if ($null -eq $pac) {
-    $pacLauncher = Join-Path $env:LOCALAPPDATA 'Microsoft\PowerAppsCli\pac.cmd'
-    if (Test-Path -LiteralPath $pacLauncher -PathType Leaf) {
-        $pacPath = $pacLauncher
+$pacCommand = Get-Command 'pac' -ErrorAction SilentlyContinue
+if (-not $PacPath) {
+    if ($null -ne $pacCommand) {
+        $PacPath = $pacCommand.Source
     } else {
-        throw "Power Platform CLI was not found. Install it from https://learn.microsoft.com/power-platform/developer/cli/introduction"
+        $pacLauncher = Join-Path $env:LOCALAPPDATA 'Microsoft\PowerAppsCli\pac.cmd'
+        if (Test-Path -LiteralPath $pacLauncher -PathType Leaf) {
+            $PacPath = $pacLauncher
+        } else {
+            throw "Power Platform CLI was not found. Install it from https://learn.microsoft.com/power-platform/developer/cli/introduction"
+        }
     }
-} else {
-    $pacPath = $pac.Source
+} elseif (-not (Test-Path -LiteralPath $PacPath -PathType Leaf)) {
+    throw "PAC executable was not found: $PacPath"
 }
 
 if ($Initialize) {
@@ -44,7 +49,10 @@ if ($Initialize) {
     }
 
     $instructions = Get-Content -LiteralPath $instructionsPath -Raw
-    & $pacPath copilot init `
+    $instructions = $instructions -replace '(?m)^#{1,6}\s*', ''
+    $instructions = $instructions -replace '(?m)^\s*[-*]\s*', ''
+    $instructions = $instructions -replace '[\r\n\t ]+', ' '
+    & $PacPath copilot init `
         --name 'vrno.cc Link Assistant' `
         --publisher-prefix vrno `
         --schema-name vrno_ccLinkAssistant `
@@ -68,7 +76,7 @@ Get-ChildItem -LiteralPath $output -Filter '*.zip' -File | ForEach-Object {
     $existingPackages[$_.FullName] = $_.LastWriteTimeUtc
 }
 
-& $pacPath copilot pack `
+& $PacPath copilot pack `
     --publisher-prefix vrno `
     --solution-name vrno_ccAgent `
     --project-dir $workspace `

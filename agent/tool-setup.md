@@ -1,6 +1,6 @@
 # Add the connector actions in Copilot Studio
 
-The local agent scaffold contains its instructions. Connector tools must be attached to the agent in a Power Platform environment after the connector is imported:
+The generated base-agent solution contains the agent and its instructions only; it has no connector, actions, or connection reference. Attach connector tools in a Power Platform environment after creating the connector:
 
 1. Open the agent in Copilot Studio and choose **Tools** > **Add a tool** > **Connector**.
 2. Select the `vrno.cc URL Shortener` custom connector and add these actions: `ListLinks`, `CreateLink`, `GetLink`, and `DeleteLink`.

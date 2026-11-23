@@ -1,52 +1,51 @@
 # vrno.cc Copilot Studio agent
 
-Source and packaging scripts for a Copilot Studio agent that manages a user's short links through a `vrno.cc` custom connector.
+This repository contains source for an optional Copilot Studio agent that can manage a user's `vrno.cc` short links. Administrators import and configure it in their own Power Platform environment; no environment, API key, or live `vrno.cc` access is used to build the included package.
 
-The repo contains the connector's OpenAPI 2.0 definition and authentication metadata (`connector/vrno-cc/`), the agent instructions (`agent/instructions.md`), and the Copilot Studio setup checklist (`agent/tool-setup.md`). It does not contain a token, a Power Platform environment export, or a generated solution archive.
+## What is available
 
-## What the agent can do
+- `connector/vrno-cc/` contains the Swagger 2.0 definition and secure API-key connection metadata for the four link operations.
+- `agent/` contains bilingual agent instructions and the manual tool-setup checklist.
+- The GitHub Actions workflow builds an **unmanaged base-agent solution ZIP** as the `vrno-cc-agent-base` workflow artifact. Download it from the latest successful **Build base agent solution** run under **Actions**. The workflow artifact is retained for 30 days.
 
-- List links, 20 per page.
-- Create a short link with an optional code, title, 301/302 redirect, or expiry.
-- Look up a link by its short code.
-- Delete a link by numeric ID, only after confirmation.
+The base-agent ZIP contains the Copilot Studio agent and its standard topics. It does **not** contain the custom connector, connector actions, a connection reference, or a configured connection. It is not the final connected agent solution.
 
-It answers in Spanish or English according to the user's language. Expiry values must be supplied as `YYYY-MM-DD HH:MM:SS`; ambiguous dates or times should be clarified rather than guessed.
+## Why there is no connector or connected-agent ZIP
 
-## Create and export the solutions
+Power Platform CLI 2.16.1 can scaffold and package the base agent offline. The custom connector definition in this repository is source, not a solution export: `pac connector init` only creates API-properties scaffolding, while `pac connector create` creates the connector record in Dataverse and requires an authenticated environment. Exporting/cloning the connector solution and adding its connection reference and actions to the agent likewise requires an environment. `pac solution pack` packages a complete solution source tree; it does not create those environment-owned component identities or bindings.
 
-The final deliverable is an **outer ZIP bundle** containing two separate, importable Power Platform solution ZIPs. Import the connector solution first, then the agent solution; do not import the outer bundle itself.
+Accordingly, this repository does not publish a connector-solution ZIP, a connected-agent ZIP, or an outer bundle. The local base-agent ZIP is validated by unpacking it with PAC, but actual import and runtime behavior still need to be verified in the administrator's environment.
 
-1. In Power Apps, create an unmanaged solution for the connector. Add a **Custom connector** to that solution by importing `connector/vrno-cc/apiDefinition.swagger.json`. Confirm the security scheme uses API key authentication in the `Authorization` header, set the secure connection field's display name to **Bearer token**, save the connector, and export the solution as an unmanaged ZIP. The supplied `apiProperties.json` carries the matching field label and help text for connector tooling that consumes API properties.
-2. Install the [Power Platform CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction). Create a clean workspace and scaffold/package the base agent:
+## Build the base-agent ZIP locally
 
-   ```powershell
-   .\scripts\Build-AgentSolution.ps1 -Initialize
-   ```
+Install the official [Power Platform CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction), then run:
 
-   This writes the workspace under `build/agent-workspace` and the base solution under `artifacts/`. If that workspace already exists, back it up or choose a new `-WorkspacePath`; initialization does not overwrite existing files.
-3. Import the connector solution ZIP into the target environment. Create a connector connection and enter the **complete** value `Bearer <your-token>` in the secure **Bearer token** field. Do not paste the token into chat or commit it to this repository. Use a token with `read` scope for listing/lookup and `write` scope for create/delete.
-4. Import the base agent solution ZIP. In Copilot Studio, add the four connector operations (`ListLinks`, `CreateLink`, `GetLink`, and `DeleteLink`) to the agent as tools, bind the connection, and configure `DeleteLink` to require confirmation. See [`agent/tool-setup.md`](agent/tool-setup.md). Save and export the configured agent as an unmanaged solution ZIP; this export is the agent package for the final bundle.
-5. Package both exported solution ZIPs:
+```powershell
+.\scripts\Build-AgentSolution.ps1 -Initialize
+```
 
-   ```powershell
-   .\scripts\New-SolutionBundle.ps1 `
-     -ConnectorSolutionPath .\path\to\connector-solution.zip `
-     -AgentSolutionPath .\path\to\configured-agent-solution.zip
-   ```
+This creates `build/agent-workspace` and writes the base solution ZIP to `artifacts/`. If the workspace already exists, back it up or choose a different `-WorkspacePath`; initialization does not overwrite existing files. To use a PAC executable outside `PATH`, pass `-PacPath`.
 
-   The output is `artifacts/vrno-cc-copilot-solutions.zip`, containing `solutions/01-vrno-cc-connector.zip`, `solutions/02-vrno-cc-agent.zip`, and `IMPORT_ORDER.txt`.
+The CI workflow downloads the official Power Platform CLI NuGet package using normal TLS certificate validation, builds the same base solution, and checks that PAC can unpack its agent and topics before uploading the ZIP artifact.
 
-The custom connector has to be created and exported in a Power Platform environment before the outer bundle can be assembled. Its connection credentials are environment-specific and must be entered again when creating a connection in another environment. The bundle script refuses inputs that are not solution ZIPs containing a root `solution.xml`.
+## Configure it in your environment
+
+1. In Power Apps, create a custom connector from `connector/vrno-cc/apiDefinition.swagger.json`. Configure API-key authentication in the `Authorization` header and use `connector/vrno-cc/apiProperties.json` for the secure field label/help text.
+2. Create a connection with the complete value `Bearer <your-token>` in the secure field. Use a token with `read` scope for listing/lookups and `write` scope for creating/deleting links. Never paste the token into chat or commit it.
+3. Import the `vrno-cc-agent-base` ZIP as an unmanaged solution.
+4. In Copilot Studio, add the connector's `ListLinks`, `CreateLink`, `GetLink`, and `DeleteLink` operations as tools, bind the connection when prompted, and require confirmation for `DeleteLink`. See [`agent/tool-setup.md`](agent/tool-setup.md).
+5. Save and export the configured agent from your environment if you need a solution ZIP containing the connector actions and connection references. Those components are intentionally not fabricated in this repository.
+
+The agent answers in Spanish or English according to the user's language. Expiry values must be supplied as `YYYY-MM-DD HH:MM:SS`; ambiguous dates or times should be clarified rather than guessed.
 
 ## Validation
 
-Run the local connector structure checks with Node.js:
+Run the local connector-source checks with Node.js:
 
 ```powershell
 node .\scripts\Validate-Connector.mjs
 ```
 
-The agent solution script requires an installed, working `pac` CLI. `pac copilot pack` creates a local agent solution; it does not provision an environment, create the custom connector, bind a connection, or add connector tools to the agent. The configured agent must be saved and exported from Copilot Studio before it is included in the final bundle.
+The CI workflow also runs `pac solution unpack` against the generated base-agent ZIP. This verifies the package structure, not importability or connector execution in a real Power Platform environment.
 
-Microsoft references: [custom connectors in solutions](https://learn.microsoft.com/connectors/custom-connectors/customconnectorssolutions), [connectors as Copilot Studio tools](https://learn.microsoft.com/microsoft-copilot-studio/advanced-connectors), and [`pac copilot` CLI commands](https://learn.microsoft.com/power-platform/developer/cli/reference/copilot).
+Microsoft references: [custom connectors in solutions](https://learn.microsoft.com/connectors/custom-connectors/customconnectorssolutions), [`pac connector` commands](https://learn.microsoft.com/power-platform/developer/cli/reference/connector), [solution YAML source control format](https://learn.microsoft.com/power-platform/alm/solution-source-control-yaml-format), and [`pac copilot` CLI commands](https://learn.microsoft.com/power-platform/developer/cli/reference/copilot).

@@ -1,0 +1,68 @@
+name: Build base agent solution
+
+on:
+  pull_request:
+    paths:
+      - "agent/**"
+      - "connector/**"
+      - "scripts/Build-AgentSolution.ps1"
+      - ".github/workflows/build-agent-solution.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Power Platform CLI
+        shell: pwsh
+        run: |
+          $packagePath = Join-Path $env:RUNNER_TEMP "Microsoft.PowerApps.CLI.2.16.1.nupkg"
+          $extractPath = Join-Path $env:RUNNER_TEMP "pac"
+          Invoke-WebRequest `
+            -Uri "https://www.nuget.org/api/v2/package/Microsoft.PowerApps.CLI/2.16.1" `
+            -OutFile $packagePath
+          Expand-Archive -LiteralPath $packagePath -DestinationPath $extractPath
+          $pacPath = Join-Path $extractPath "tools\pac.exe"
+          if (-not (Test-Path -LiteralPath $pacPath -PathType Leaf)) {
+            throw "Power Platform CLI was not found in the official NuGet package."
+          }
+          Add-Content -Path $env:GITHUB_ENV -Value "PAC_PATH=$pacPath"
+
+      - name: Build base-agent solution
+        shell: pwsh
+        run: .\scripts\Build-AgentSolution.ps1 -Initialize -PacPath "$env:PAC_PATH"
+
+      - name: Verify the solution package
+        shell: pwsh
+        run: |
+          $unpackPath = Join-Path $env:RUNNER_TEMP "vrno-cc-agent-unpacked"
+          & $env:PAC_PATH solution unpack `
+            --zipfile (Join-Path $PWD "artifacts\vrno_ccAgent.zip") `
+            --folder $unpackPath
+          if ($LASTEXITCODE -ne 0) {
+            throw "PAC could not unpack the generated base-agent solution."
+          }
+          $botPath = Join-Path $unpackPath "bots\vrno_ccLinkAssistant\bot.xml"
+          $componentsPath = Join-Path $unpackPath "botcomponents"
+          if (-not (Test-Path -LiteralPath $botPath -PathType Leaf) -or
+              -not (Test-Path -LiteralPath $componentsPath -PathType Container) -or
+              (Get-ChildItem -LiteralPath $componentsPath -Directory).Count -eq 0) {
+            throw "The generated solution is missing the expected agent or topic components."
+          }
+          [xml]$bot = Get-Content -LiteralPath $botPath
+          if ($bot.bot.schemaname -ne "vrno_ccLinkAssistant" -or
+              $bot.bot.name -ne "vrno.cc Link Assistant") {
+            throw "The generated solution does not contain the expected agent identity."
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vrno-cc-agent-base
+          path: artifacts/vrno_ccAgent.zip
+          if-no-files-found: error
+          retention-days: 30
