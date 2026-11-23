@@ -12,7 +12,7 @@ The base-agent ZIP contains the Copilot Studio agent and its standard topics. It
 
 ## Why there is no connector or connected-agent ZIP
 
-Power Platform CLI 2.16.1 can scaffold and package the base agent offline. The custom connector definition in this repository is source, not a solution export: `pac connector init` only creates API-properties scaffolding, while `pac connector create` creates the connector record in Dataverse and requires an authenticated environment. Exporting/cloning the connector solution and adding its connection reference and actions to the agent likewise requires an environment. `pac solution pack` packages a complete solution source tree; it does not create those environment-owned component identities or bindings.
+Power Platform CLI 2.16.1 can scaffold and package the base agent offline. The custom connector definition in this repository is source, not a solution export: `pac connector init` only creates API-properties scaffolding, while `pac connector create` creates a connector row in Dataverse and requires an authenticated environment. Downloading an existing connector or cloning its solution also requires an environment and connector identity. `pac solution pack` packages a complete solution source tree; it does not create the connector component metadata, connection reference, or action bindings from an OpenAPI file.
 
 Accordingly, this repository does not publish a connector-solution ZIP, a connected-agent ZIP, or an outer bundle. The local base-agent ZIP is validated by unpacking it with PAC, but actual import and runtime behavior still need to be verified in the administrator's environment.
 
